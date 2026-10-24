@@ -58,6 +58,7 @@ public class MainActivity extends Activity {
  intent.putExtra(Intent.EXTRA_TITLE,"meu-controle-financeiro.csv");
  startActivityForResult(intent,1001);
  }
+ long parseCents(String input){String raw=input.trim().replace(" ","");if(raw.contains(","))raw=raw.replace(".","").replace(",",".");else if(raw.matches("[0-9]+\\.[0-9]{3}(\\.[0-9]{3})*"))raw=raw.replace(".","");long cents=new java.math.BigDecimal(raw).movePointRight(2).longValueExact();if(cents<=0)throw new IllegalArgumentException();return cents;}
  String csvCell(String s){return "\"" + s.replace("\"","\"\"").replace("\r"," ").replace("\n"," ") + "\"";}
  @Override protected void onActivityResult(int request,int result,Intent data){
  super.onActivityResult(request,result,data);
@@ -90,9 +91,8 @@ public class MainActivity extends Activity {
  AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Editar lançamento").setView(form).setNegativeButton("Cancelar",null).setPositiveButton("Salvar",null).create();
  dialog.setOnShowListener(x->dialog.getButton(-1).setOnClickListener(v->{
  try{
- String raw=amount.getText().toString().trim().replace(".","").replace(",",".");
- long cents=new java.math.BigDecimal(raw).movePointRight(2).longValueExact();
- if(cents<=0)throw new IllegalArgumentException();
+ long cents=parseCents(amount.getText().toString());
+ if(description.getText().toString().trim().isEmpty()){description.setError("Informe uma descrição");return;}
  ContentValues cv=new ContentValues();cv.put("tipo",type.getSelectedItem().toString());cv.put("descricao",description.getText().toString().trim());cv.put("valor",cents);
  db.update("lancamentos",cv,"id=? AND area=?",new String[]{String.valueOf(id),area});
  dialog.dismiss();render();
@@ -109,9 +109,8 @@ public class MainActivity extends Activity {
  AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Novo lançamento — "+area).setView(form).setNegativeButton("Cancelar",null).setPositiveButton("Salvar",null).create();
  dialog.setOnShowListener(x->dialog.getButton(-1).setOnClickListener(v->{
  try{
- String raw=amount.getText().toString().trim().replace(".","").replace(",",".");
- long cents=new java.math.BigDecimal(raw).movePointRight(2).longValueExact();
- if(cents<=0)throw new IllegalArgumentException();
+ long cents=parseCents(amount.getText().toString());
+ if(description.getText().toString().trim().isEmpty()){description.setError("Informe uma descrição");return;}
  android.content.ContentValues cv=new android.content.ContentValues();
  cv.put("area",area);cv.put("tipo",type.getSelectedItem().toString());cv.put("descricao",description.getText().toString());cv.put("valor",cents);cv.put("data",System.currentTimeMillis());
  db.insertOrThrow("lancamentos",null,cv);dialog.dismiss();render();

@@ -9,6 +9,7 @@ import android.view.*;
 import android.widget.*;
 import java.text.*;
 import java.util.*;
+import java.io.*;
 
 public class MainActivity extends Activity {
  SQLiteDatabase db; LinearLayout layout; String area="Pessoal",periodo="Mensal";
@@ -43,12 +44,62 @@ public class MainActivity extends Activity {
  layout.addView(text("Comparativo do período",18,Color.WHITE));
  long total=in+out; if(total>0){LinearLayout bars=new LinearLayout(this);bars.setOrientation(1);bars.setPadding(12,8,12,8);bars.setBackgroundColor(panel);addBar(bars,"Receitas",in,total,green);addBar(bars,"Despesas",out,total,red);layout.addView(bars);}else layout.addView(text("Cadastre receitas ou despesas para visualizar o gráfico.",13,Color.LTGRAY));
  layout.addView(button("+ Novo lançamento",this::newEntry));
+ layout.addView(button("Exportar todos os lançamentos (CSV)",this::exportCsv));
  layout.addView(text("Últimos lançamentos",21,Color.WHITE));
  if(rows.isEmpty())layout.addView(text("Nenhum lançamento cadastrado.",15,Color.LTGRAY));
- for(int j=0;j<Math.min(40,rows.size());j++){final long id=ids.get(j);TextView item=text(rows.get(j)+"  •  toque para excluir",15,Color.WHITE);item.setBackgroundColor(panel);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(0,0,0,5);layout.addView(item,lp);item.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Excluir lançamento?").setMessage("Esta ação não pode ser desfeita.").setNegativeButton("Cancelar",null).setPositiveButton("Excluir",(d,w)->{db.delete("lancamentos","id=? AND area=?",new String[]{String.valueOf(id),area});render();}).show());}
- layout.addView(text("Versão inicial de testes: dados locais, sem backup na nuvem.",12,Color.LTGRAY));
+ for(int j=0;j<Math.min(40,rows.size());j++){final long id=ids.get(j);TextView item=text(rows.get(j)+"  •  toque para editar",15,Color.WHITE);item.setBackgroundColor(panel);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(0,0,0,5);layout.addView(item,lp);item.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Lançamento").setItems(new String[]{"Editar","Excluir"},(d,which)->{if(which==0)editEntry(id);else new AlertDialog.Builder(this).setTitle("Excluir lançamento?").setMessage("Esta ação não pode ser desfeita.").setNegativeButton("Cancelar",null).setPositiveButton("Excluir",(a,w)->{db.delete("lancamentos","id=? AND area=?",new String[]{String.valueOf(id),area});render();}).show();}).show());}
+ layout.addView(text("Dados locais. Exporte o CSV para guardar uma cópia; não é possível restaurá-lo pelo app ainda.",12,Color.LTGRAY));
  }
  void addBar(LinearLayout parent,String name,long value,long total,int color){parent.addView(text(name+": "+reais(value),14,Color.WHITE));LinearLayout track=new LinearLayout(this);track.setBackgroundColor(bg);int width=getResources().getDisplayMetrics().widthPixels-80;int barWidth=(int)Math.max(value>0?4:0,Math.round((double)value/total*width));View fill=new View(this);fill.setBackgroundColor(color);track.addView(fill,new LinearLayout.LayoutParams(barWidth,20));parent.addView(track,new LinearLayout.LayoutParams(-1,20));}
+ void exportCsv(){
+ Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT);
+ intent.addCategory(Intent.CATEGORY_OPENABLE);
+ intent.setType("text/csv");
+ intent.putExtra(Intent.EXTRA_TITLE,"meu-controle-financeiro.csv");
+ startActivityForResult(intent,1001);
+ }
+ String csvCell(String s){return "\"" + s.replace("\"","\"\"").replace("\r"," ").replace("\n"," ") + "\"";}
+ @Override protected void onActivityResult(int request,int result,Intent data){
+ super.onActivityResult(request,result,data);
+ if(request!=1001||result!=RESULT_OK||data==null||data.getData()==null)return;
+ try{
+  OutputStream stream=getContentResolver().openOutputStream(data.getData());
+  if(stream==null)throw new IOException("Sem acesso ao arquivo");
+  try(Writer writer=new OutputStreamWriter(stream,"UTF-8")){
+   writer.write("\uFEFFarea;tipo;descricao;valor;data\\n");
+   try(Cursor c=db.rawQuery("SELECT area,tipo,descricao,valor,data FROM lancamentos ORDER BY data DESC",null)){
+    SimpleDateFormat fmt=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss",new Locale("pt","BR"));
+    while(c.moveToNext()){
+     String amount=java.math.BigDecimal.valueOf(c.getLong(3),2).toPlainString().replace('.',',');
+     writer.write(csvCell(c.getString(0))+";"+csvCell(c.getString(1))+";"+csvCell(c.getString(2))+";"+csvCell(amount)+";"+csvCell(fmt.format(new Date(c.getLong(4))))+"\\n");
+    }
+   }
+  }
+  Toast.makeText(this,"Arquivo CSV salvo com sucesso",Toast.LENGTH_LONG).show();
+ }catch(Exception e){new AlertDialog.Builder(this).setMessage("Não foi possível exportar: "+e.getMessage()).setPositiveButton("OK",null).show();}
+ }
+ void editEntry(long id){
+ try(Cursor c=db.rawQuery("SELECT tipo,descricao,valor FROM lancamentos WHERE id=? AND area=?",new String[]{String.valueOf(id),area})){
+ if(!c.moveToFirst())return;
+ String oldType=c.getString(0),oldDescription=c.getString(1);long oldValue=c.getLong(2);
+ LinearLayout form=new LinearLayout(this);form.setOrientation(1);form.setPadding(20,8,20,8);
+ Spinner type=new Spinner(this);type.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"Despesa","Receita"}));type.setSelection(oldType.equals("Receita")?1:0);
+ EditText description=new EditText(this);description.setSingleLine(true);description.setText(oldDescription);
+ EditText amount=new EditText(this);amount.setInputType(8194);amount.setText(java.math.BigDecimal.valueOf(oldValue,2).toPlainString().replace('.',','));
+ form.addView(type);form.addView(description);form.addView(amount);
+ AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Editar lançamento").setView(form).setNegativeButton("Cancelar",null).setPositiveButton("Salvar",null).create();
+ dialog.setOnShowListener(x->dialog.getButton(-1).setOnClickListener(v->{
+ try{
+ String raw=amount.getText().toString().trim().replace(".","").replace(",",".");
+ long cents=new java.math.BigDecimal(raw).movePointRight(2).longValueExact();
+ if(cents<=0)throw new IllegalArgumentException();
+ ContentValues cv=new ContentValues();cv.put("tipo",type.getSelectedItem().toString());cv.put("descricao",description.getText().toString().trim());cv.put("valor",cents);
+ db.update("lancamentos",cv,"id=? AND area=?",new String[]{String.valueOf(id),area});
+ dialog.dismiss();render();
+ }catch(Exception e){amount.setError("Informe um valor válido, ex.: 35,50");}
+ }));dialog.show();
+ }
+ }
  void newEntry(){
  LinearLayout form=new LinearLayout(this);form.setOrientation(1);form.setPadding(20,8,20,8);
  Spinner type=new Spinner(this);type.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"Despesa","Receita"}));

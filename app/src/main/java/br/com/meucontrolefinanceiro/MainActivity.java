@@ -40,7 +40,9 @@ public class MainActivity extends Activity {
  String reais(long cents){return NumberFormat.getCurrencyInstance(new Locale("pt","BR")).format(java.math.BigDecimal.valueOf(cents,2));}
  void render(){
  ScrollView sc=new ScrollView(this);layout=new LinearLayout(this);layout.setOrientation(1);layout.setPadding(dp(18),dp(18),dp(18),dp(28));layout.setBackgroundColor(bg);sc.addView(layout);setContentView(sc);
- TextView brand=text("◈  MEU CONTROLE",14,green);brand.setTypeface(Typeface.DEFAULT,Typeface.BOLD);layout.addView(brand);
+ LinearLayout brandRow=new LinearLayout(this);brandRow.setGravity(Gravity.CENTER_VERTICAL);
+ ImageView logo=new ImageView(this);logo.setImageResource(R.drawable.app_brand_icon);brandRow.addView(logo,new LinearLayout.LayoutParams(dp(54),dp(54)));
+ TextView brand=text("VS  •  MEU CONTROLE FINANCEIRO",14,green);brand.setTypeface(Typeface.DEFAULT,Typeface.BOLD);brandRow.addView(brand);layout.addView(brandRow);
  TextView heading=text("Olá! Seu dinheiro em dia.",24,Color.WHITE);heading.setTypeface(Typeface.DEFAULT,Typeface.BOLD);layout.addView(heading);
  layout.addView(text("Visão financeira  •  "+area,13,muted));spacing(12);
  LinearLayout scopes=new LinearLayout(this);scopes.addView(button("Pessoal",()->{area="Pessoal";render();}),new LinearLayout.LayoutParams(0,-2,1));scopes.addView(button("Empresa",()->{area="Empresa";render();}),new LinearLayout.LayoutParams(0,-2,1));layout.addView(scopes);spacing(8);

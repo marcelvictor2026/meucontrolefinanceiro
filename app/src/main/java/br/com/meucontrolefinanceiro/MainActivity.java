@@ -45,12 +45,40 @@ public class MainActivity extends Activity {
  long total=in+out; if(total>0){LinearLayout bars=new LinearLayout(this);bars.setOrientation(1);bars.setPadding(12,8,12,8);bars.setBackgroundColor(panel);addBar(bars,"Receitas",in,total,green);addBar(bars,"Despesas",out,total,red);layout.addView(bars);}else layout.addView(text("Cadastre receitas ou despesas para visualizar o gráfico.",13,Color.LTGRAY));
  layout.addView(button("+ Novo lançamento",this::newEntry));
  layout.addView(button("Exportar todos os lançamentos (CSV)",this::exportCsv));
+ layout.addView(button("Restaurar lançamentos de backup CSV",this::importCsv));
  layout.addView(text("Últimos lançamentos",21,Color.WHITE));
  if(rows.isEmpty())layout.addView(text("Nenhum lançamento cadastrado.",15,Color.LTGRAY));
  for(int j=0;j<Math.min(40,rows.size());j++){final long id=ids.get(j);TextView item=text(rows.get(j)+"  •  toque para editar",15,Color.WHITE);item.setBackgroundColor(panel);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(0,0,0,5);layout.addView(item,lp);item.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Lançamento").setItems(new String[]{"Editar","Excluir"},(d,which)->{if(which==0)editEntry(id);else new AlertDialog.Builder(this).setTitle("Excluir lançamento?").setMessage("Esta ação não pode ser desfeita.").setNegativeButton("Cancelar",null).setPositiveButton("Excluir",(a,w)->{db.delete("lancamentos","id=? AND area=?",new String[]{String.valueOf(id),area});render();}).show();}).show());}
- layout.addView(text("Dados locais. Exporte o CSV para guardar uma cópia; não é possível restaurá-lo pelo app ainda.",12,Color.LTGRAY));
+ layout.addView(text("Dados locais. Exporte um CSV para backup e guarde-o em local seguro. Ao restaurar, os registros são acrescentados.",12,Color.LTGRAY));
  }
  void addBar(LinearLayout parent,String name,long value,long total,int color){parent.addView(text(name+": "+reais(value),14,Color.WHITE));LinearLayout track=new LinearLayout(this);track.setBackgroundColor(bg);int width=getResources().getDisplayMetrics().widthPixels-80;int barWidth=(int)Math.max(value>0?4:0,Math.round((double)value/total*width));View fill=new View(this);fill.setBackgroundColor(color);track.addView(fill,new LinearLayout.LayoutParams(barWidth,20));parent.addView(track,new LinearLayout.LayoutParams(-1,20));}
+ void importCsv(){
+ new AlertDialog.Builder(this).setTitle("Restaurar backup").setMessage("Importe um arquivo CSV exportado por este aplicativo. Os lançamentos importados serão acrescentados aos existentes; importe uma única vez para evitar duplicatas.").setNegativeButton("Cancelar",null).setPositiveButton("Selecionar arquivo",(d,w)->{
+ Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT);intent.addCategory(Intent.CATEGORY_OPENABLE);intent.setType("*/*");intent.addCategory(Intent.CATEGORY_OPENABLE);startActivityForResult(intent,1002);
+ }).show();
+ }
+ String[] parseCsvLine(String line){
+ ArrayList<String> values=new ArrayList<>();StringBuilder value=new StringBuilder();boolean quoted=false;
+ for(int i=0;i<line.length();i++){char ch=line.charAt(i);if(ch=='"'){if(quoted&&i+1<line.length()&&line.charAt(i+1)=='"'){value.append('"');i++;}else quoted=!quoted;}else if(ch==';'&&!quoted){values.add(value.toString());value.setLength(0);}else value.append(ch);}
+ values.add(value.toString());return values.toArray(new String[0]);
+ }
+ void restoreCsv(android.net.Uri uri){
+ int count=0;try(InputStream input=getContentResolver().openInputStream(uri)){
+ if(input==null)throw new IOException("Arquivo indisponível");
+ BufferedReader reader=new BufferedReader(new InputStreamReader(input,"UTF-8"));
+ String header=reader.readLine();if(header==null||!header.replace("\uFEFF","").equals("area;tipo;descricao;valor;data"))throw new IOException("Formato de backup inválido");
+ ArrayList<ContentValues> entries=new ArrayList<>();String line;SimpleDateFormat fmt=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss",new Locale("pt","BR"));fmt.setLenient(false);
+ while((line=reader.readLine())!=null){if(line.trim().isEmpty())continue;if(entries.size()>=100000)throw new IOException("Arquivo muito grande");
+ String[] fields=parseCsvLine(line);if(fields.length!=5)throw new IOException("Linha inválida");
+ if(!fields[0].equals("Pessoal")&&!fields[0].equals("Empresa"))throw new IOException("Área inválida");
+ if(!fields[1].equals("Receita")&&!fields[1].equals("Despesa"))throw new IOException("Tipo inválido");
+ long cents=parseCents(fields[3]);long date=fmt.parse(fields[4]).getTime();
+ ContentValues cv=new ContentValues();cv.put("area",fields[0]);cv.put("tipo",fields[1]);cv.put("descricao",fields[2]);cv.put("valor",cents);cv.put("data",date);entries.add(cv);
+ }
+ db.beginTransaction();try{for(ContentValues cv:entries){db.insertOrThrow("lancamentos",null,cv);count++;}db.setTransactionSuccessful();}finally{db.endTransaction();}
+ Toast.makeText(this,count+" lançamentos restaurados",Toast.LENGTH_LONG).show();render();
+ }catch(Exception e){new AlertDialog.Builder(this).setTitle("Falha ao restaurar").setMessage(e.getMessage()).setPositiveButton("OK",null).show();}
+ }
  void exportCsv(){
  Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT);
  intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -62,7 +90,9 @@ public class MainActivity extends Activity {
  String csvCell(String s){return "\"" + s.replace("\"","\"\"").replace("\r"," ").replace("\n"," ") + "\"";}
  @Override protected void onActivityResult(int request,int result,Intent data){
  super.onActivityResult(request,result,data);
- if(request!=1001||result!=RESULT_OK||data==null||data.getData()==null)return;
+ if(result!=RESULT_OK||data==null||data.getData()==null)return;
+ if(request==1002){restoreCsv(data.getData());return;}
+ if(request!=1001)return;
  try{
   OutputStream stream=getContentResolver().openOutputStream(data.getData());
   if(stream==null)throw new IOException("Sem acesso ao arquivo");

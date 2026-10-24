@@ -18,7 +18,7 @@ public class ShareImportActivity extends Activity {
  EditText field(String hint,String value){EditText e=new EditText(this);e.setHint(hint);e.setText(value);e.setTextColor(Color.WHITE);e.setHintTextColor(0xffaaa098);e.setSingleLine(true);return e;}
  TextView label(String t){TextView v=new TextView(this);v.setText(t);v.setTextColor(gold);v.setTextSize(13);v.setPadding(0,dp(12),0,0);return v;}
  @Override public void onCreate(Bundle state){super.onCreate(state);getWindow().setStatusBarColor(bg);getWindow().setNavigationBarColor(bg);
-  Intent intent=getIntent();String raw=intent!=null&&Intent.ACTION_SEND.equals(intent.getAction())&&"text/plain".equals(intent.getType())?intent.getStringExtra(Intent.EXTRA_TEXT):null;
+  Intent intent=getIntent();String raw=intent!=null&&(Intent.ACTION_SEND.equals(intent.getAction())&&"text/plain".equals(intent.getType())||"br.com.meucontrolefinanceiro.REVIEW_NOTIFICATION".equals(intent.getAction()))?intent.getStringExtra(Intent.EXTRA_TEXT):null;
   if(raw==null||raw.trim().isEmpty()){new AlertDialog.Builder(this).setMessage("Compartilhe uma mensagem de texto pelo WhatsApp.").setPositiveButton("OK",(d,w)->finish()).show();return;}
   if(raw.length()>12000)raw=raw.substring(0,12000);
   showConfirmation(raw);
@@ -49,7 +49,7 @@ public class ShareImportActivity extends Activity {
   root.addView(label("VALOR (R$)"));EditText value=field("Ex.: 1500,00",ambiguous?"":amount);value.setInputType(InputType.TYPE_CLASS_NUMBER|InputType.TYPE_NUMBER_FLAG_DECIMAL);root.addView(value);
   if(ambiguous||amount.isEmpty()){TextView warn=label("Valor não identificado com segurança. Preencha manualmente.");warn.setTextColor(0xffffad55);root.addView(warn);}
   root.addView(label("DESCRIÇÃO"));EditText description=field("A que se refere", "Movimentação informada pelo WhatsApp");root.addView(description);
-  root.addView(label("ORIGEM / QUEM PAGOU"));EditText origin=field("Cliente, empresa ou pessoa","");root.addView(origin);
+  root.addView(label("ORIGEM / QUEM PAGOU"));EditText origin=field("Cliente, empresa ou pessoa",getIntent().getStringExtra("sender")==null?"":getIntent().getStringExtra("sender"));root.addView(origin);
   root.addView(label("DETALHES"));EditText details=field("Informações adicionais",raw);details.setSingleLine(false);details.setMinLines(3);root.addView(details);
   root.addView(label("DATA E HORA DA MOVIMENTAÇÃO"));
   SimpleDateFormat fmt=new SimpleDateFormat("dd/MM/yyyy HH:mm",new Locale("pt","BR"));

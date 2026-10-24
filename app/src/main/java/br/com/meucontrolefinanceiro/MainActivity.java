@@ -45,6 +45,9 @@ public class MainActivity extends Activity {
  if(b!=null){area=b.getString("area","Pessoal");periodo=b.getString("periodo","Mensal");}
  db=openOrCreateDatabase("financas.db",MODE_PRIVATE,null);
  db.execSQL("CREATE TABLE IF NOT EXISTS lancamentos(id INTEGER PRIMARY KEY,area TEXT,tipo TEXT,descricao TEXT,valor INTEGER,data INTEGER)");
+ try{db.execSQL("ALTER TABLE lancamentos ADD COLUMN origem TEXT DEFAULT ''");}catch(android.database.SQLException ignored){}
+ try{db.execSQL("ALTER TABLE lancamentos ADD COLUMN detalhes TEXT DEFAULT ''");}catch(android.database.SQLException ignored){}
+ try{db.execSQL("ALTER TABLE lancamentos ADD COLUMN criado_em INTEGER DEFAULT 0");}catch(android.database.SQLException ignored){}
  db.execSQL("CREATE TABLE IF NOT EXISTS agenda(id INTEGER PRIMARY KEY AUTOINCREMENT,titulo TEXT NOT NULL,quando INTEGER NOT NULL)");
  if(android.os.Build.VERSION.SDK_INT>=33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS")!=android.content.pm.PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"},123);
  render();}
@@ -73,11 +76,18 @@ public class MainActivity extends Activity {
  else cal.add(Calendar.YEAR,-1);
  since=cal.getTimeInMillis();
  long in=0,out=0;ArrayList<String> rows=new ArrayList<>();ArrayList<Long> ids=new ArrayList<>();
- try(Cursor c=db.rawQuery("SELECT id,tipo,descricao,valor,data FROM lancamentos WHERE area=? AND data>=? ORDER BY data DESC",new String[]{area,String.valueOf(since)})){
+ try(Cursor c=db.rawQuery("SELECT id,tipo,descricao,valor,data,origem,detalhes,criado_em FROM lancamentos WHERE area=? AND data>=? ORDER BY data DESC",new String[]{area,String.valueOf(since)})){
  while(c.moveToNext()){
  long id=c.getLong(0);String tipo=c.getString(1),descricao=c.getString(2);long v=c.getLong(3),data=c.getLong(4);
  if(tipo.equals("Receita"))in+=v;else out+=v;ids.add(id);
- rows.add((tipo.equals("Receita")?"+ ":"- ")+reais(v)+"  "+descricao+"  "+new SimpleDateFormat("dd/MM",new Locale("pt","BR")).format(new Date(data)));
+ String origem=c.getString(5),detalhes=c.getString(6);long criado=c.getLong(7);
+ String dateText=new SimpleDateFormat("dd/MM/yyyy 'às' HH:mm",new Locale("pt","BR")).format(new Date(data));
+ String row=(tipo.equals("Receita")?"↑ RECEITA  ":"↓ DESPESA  ")+reais(v)+"\\n"+descricao;
+ if(origem!=null&&!origem.isEmpty())row+="\\nOrigem: "+origem;
+ if(detalhes!=null&&!detalhes.isEmpty())row+="\\nDetalhes: "+detalhes;
+ row+="\\nEntrada: "+dateText;
+ if(criado>0&&criado!=data)row+="\\nRegistrado: "+new SimpleDateFormat("dd/MM/yyyy 'às' HH:mm",new Locale("pt","BR")).format(new Date(criado));
+ rows.add(row);
  }}
  layout.addView(metric("◈  SALDO DO PERÍODO",reais(in-out),in-out>=0?gold:red));
  spacing(9);LinearLayout metrics=new LinearLayout(this);metrics.setOrientation(LinearLayout.HORIZONTAL);
@@ -190,42 +200,46 @@ public class MainActivity extends Activity {
   Toast.makeText(this,"Arquivo CSV salvo com sucesso",Toast.LENGTH_LONG).show();
  }catch(Exception e){new AlertDialog.Builder(this).setMessage("Não foi possível exportar: "+e.getMessage()).setPositiveButton("OK",null).show();}
  }
- void editEntry(long id){
- try(Cursor c=db.rawQuery("SELECT tipo,descricao,valor FROM lancamentos WHERE id=? AND area=?",new String[]{String.valueOf(id),area})){
- if(!c.moveToFirst())return;
- String oldType=c.getString(0),oldDescription=c.getString(1);long oldValue=c.getLong(2);
- LinearLayout form=new LinearLayout(this);form.setOrientation(1);form.setPadding(20,8,20,8);
- Spinner type=new Spinner(this);type.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"Despesa","Receita"}));type.setSelection(oldType.equals("Receita")?1:0);
- EditText description=new EditText(this);description.setSingleLine(true);description.setText(oldDescription);
- EditText amount=new EditText(this);amount.setInputType(8194);amount.setText(java.math.BigDecimal.valueOf(oldValue,2).toPlainString().replace('.',','));
- form.addView(type);form.addView(description);form.addView(amount);
- AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Editar lançamento").setView(form).setNegativeButton("Cancelar",null).setPositiveButton("Salvar",null).create();
- dialog.setOnShowListener(x->dialog.getButton(-1).setOnClickListener(v->{
- try{
- long cents=parseCents(amount.getText().toString());
- if(description.getText().toString().trim().isEmpty()){description.setError("Informe uma descrição");return;}
- ContentValues cv=new ContentValues();cv.put("tipo",type.getSelectedItem().toString());cv.put("descricao",description.getText().toString().trim());cv.put("valor",cents);
- db.update("lancamentos",cv,"id=? AND area=?",new String[]{String.valueOf(id),area});
- dialog.dismiss();render();
- }catch(Exception e){amount.setError("Informe um valor válido, ex.: 35,50");}
- }));dialog.show();
+ void entryForm(long editingId){
+  boolean editing=editingId>=0;
+  String oldType="Receita",oldDescription="",oldOrigin="",oldDetails="";long oldValue=0,oldDate=System.currentTimeMillis();
+  if(editing){try(Cursor c=db.rawQuery("SELECT tipo,descricao,valor,data,origem,detalhes FROM lancamentos WHERE id=? AND area=?",new String[]{String.valueOf(editingId),area})){
+   if(!c.moveToFirst())return;
+   oldType=c.getString(0);oldDescription=c.getString(1);oldValue=c.getLong(2);oldDate=c.getLong(3);oldOrigin=c.getString(4);oldDetails=c.getString(5);
+  }}
+  Calendar selected=Calendar.getInstance();selected.setTimeInMillis(oldDate);
+  LinearLayout form=new LinearLayout(this);form.setOrientation(1);form.setPadding(dp(18),dp(8),dp(18),dp(8));
+  Spinner type=new Spinner(this);type.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"Receita","Despesa"}));type.setSelection(oldType.equals("Receita")?0:1);
+  EditText description=new EditText(this);description.setSingleLine(true);description.setHint("Descrição / referência");description.setText(oldDescription);
+  EditText amount=new EditText(this);amount.setHint("Valor (ex.: 350,50)");amount.setInputType(8194);if(editing)amount.setText(java.math.BigDecimal.valueOf(oldValue,2).toPlainString().replace('.',','));
+  EditText origin=new EditText(this);origin.setSingleLine(true);origin.setHint("De quem ou de onde veio o dinheiro");origin.setText(oldOrigin==null?"":oldOrigin);
+  EditText details=new EditText(this);details.setHint("Detalhes: a que se refere o recebimento");details.setMinLines(2);details.setMaxLines(4);details.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);details.setText(oldDetails==null?"":oldDetails);
+  TextView originLabel=text("ORIGEM DO RECEBIMENTO",12,gold);
+  TextView detailsLabel=text("DESCRIÇÃO DETALHADA",12,gold);
+  TextView dateLabel=text("DATA E HORA DA ENTRADA",12,gold);
+  SimpleDateFormat fmt=new SimpleDateFormat("dd/MM/yyyy HH:mm",new Locale("pt","BR"));
+  Button date=button("Data: "+fmt.format(selected.getTime()),()->{});
+  date.setOnClickListener(v->new DatePickerDialog(this,(view,y,m,d)->{selected.set(y,m,d);date.setText("Data: "+fmt.format(selected.getTime()));},selected.get(Calendar.YEAR),selected.get(Calendar.MONTH),selected.get(Calendar.DAY_OF_MONTH)).show());
+  Button time=button("Hora: "+new SimpleDateFormat("HH:mm",new Locale("pt","BR")).format(selected.getTime()),()->{});
+  time.setOnClickListener(v->new TimePickerDialog(this,(view,h,min)->{selected.set(Calendar.HOUR_OF_DAY,h);selected.set(Calendar.MINUTE,min);selected.set(Calendar.SECOND,0);time.setText(String.format(new Locale("pt","BR"),"Hora: %02d:%02d",h,min));date.setText("Data: "+fmt.format(selected.getTime()));},selected.get(Calendar.HOUR_OF_DAY),selected.get(Calendar.MINUTE),true).show());
+  form.addView(text("TIPO DE LANÇAMENTO",12,gold));form.addView(type);form.addView(description);form.addView(amount);
+  form.addView(originLabel);form.addView(origin);form.addView(detailsLabel);form.addView(details);
+  form.addView(dateLabel);form.addView(date);form.addView(time);
+  Runnable visibility=()->{boolean revenue=type.getSelectedItemPosition()==0;originLabel.setVisibility(revenue?View.VISIBLE:View.GONE);origin.setVisibility(revenue?View.VISIBLE:View.GONE);detailsLabel.setVisibility(revenue?View.VISIBLE:View.GONE);details.setVisibility(revenue?View.VISIBLE:View.GONE);};
+  type.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){public void onItemSelected(android.widget.AdapterView<?> parent,View view,int position,long id){visibility.run();}public void onNothingSelected(android.widget.AdapterView<?> parent){}});visibility.run();
+  ScrollView scroll=new ScrollView(this);scroll.addView(form);
+  AlertDialog dialog=new AlertDialog.Builder(this).setTitle(editing?"Editar lançamento — "+area:"Novo lançamento — "+area).setView(scroll).setNegativeButton("Cancelar",null).setPositiveButton("Salvar",null).create();
+  dialog.setOnShowListener(x->dialog.getButton(-1).setOnClickListener(v->{
+   long cents;try{cents=parseCents(amount.getText().toString());}catch(Exception e){amount.setError("Informe um valor válido, ex.: 35,50");return;}
+   String desc=description.getText().toString().trim();if(desc.isEmpty()){description.setError("Informe a descrição");return;}
+   ContentValues cv=new ContentValues();cv.put("tipo",type.getSelectedItem().toString());cv.put("descricao",desc);cv.put("valor",cents);cv.put("data",selected.getTimeInMillis());
+   cv.put("origem",type.getSelectedItemPosition()==0?origin.getText().toString().trim():"");cv.put("detalhes",type.getSelectedItemPosition()==0?details.getText().toString().trim():"");
+   if(editing)db.update("lancamentos",cv,"id=? AND area=?",new String[]{String.valueOf(editingId),area});
+   else{cv.put("area",area);cv.put("criado_em",System.currentTimeMillis());db.insertOrThrow("lancamentos",null,cv);}
+   dialog.dismiss();render();
+  }));dialog.show();
  }
- }
- void newEntry(){
- LinearLayout form=new LinearLayout(this);form.setOrientation(1);form.setPadding(20,8,20,8);
- Spinner type=new Spinner(this);type.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"Despesa","Receita"}));
- EditText description=new EditText(this);description.setHint("Descrição (ex.: almoço)");
- EditText amount=new EditText(this);amount.setHint("Valor (ex.: 35,50)");amount.setInputType(8194);
- form.addView(type);form.addView(description);form.addView(amount);
- AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Novo lançamento — "+area).setView(form).setNegativeButton("Cancelar",null).setPositiveButton("Salvar",null).create();
- dialog.setOnShowListener(x->dialog.getButton(-1).setOnClickListener(v->{
- try{
- long cents=parseCents(amount.getText().toString());
- if(description.getText().toString().trim().isEmpty()){description.setError("Informe uma descrição");return;}
- android.content.ContentValues cv=new android.content.ContentValues();
- cv.put("area",area);cv.put("tipo",type.getSelectedItem().toString());cv.put("descricao",description.getText().toString());cv.put("valor",cents);cv.put("data",System.currentTimeMillis());
- db.insertOrThrow("lancamentos",null,cv);dialog.dismiss();render();
- }catch(Exception e){amount.setError("Informe um valor válido, ex.: 35,50");}
- }));dialog.show();
- }
+ void editEntry(long id){entryForm(id);}
+ void newEntry(){entryForm(-1);}
+
 }

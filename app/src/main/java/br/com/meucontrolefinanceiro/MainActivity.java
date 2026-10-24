@@ -5,6 +5,8 @@ import android.content.*;
 import android.database.*;
 import android.database.sqlite.*;
 import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.view.*;
 import android.widget.*;
 import java.text.*;
@@ -13,9 +15,20 @@ import java.io.*;
 
 public class MainActivity extends Activity {
  SQLiteDatabase db; LinearLayout layout; String area="Pessoal",periodo="Mensal";
- int bg=Color.rgb(14,22,33), panel=Color.rgb(28,39,54), green=Color.rgb(52,211,153), red=Color.rgb(251,113,133);
+ int bg=Color.rgb(9,17,30), panel=Color.rgb(24,37,55), green=Color.rgb(52,211,153), red=Color.rgb(251,113,133);
+ int muted=Color.rgb(156,174,195), stroke=Color.rgb(43,61,79);
+ int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+.5f);}
+ GradientDrawable surface(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));d.setStroke(dp(1),stroke);return d;}
+ void spacing(int h){View v=new View(this);layout.addView(v,new LinearLayout.LayoutParams(1,dp(h)));}
+ TextView metric(String label,String amount,int accent){
+  TextView t=text(label+"\n"+amount,19,accent);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);t.setLineSpacing(dp(5),1);
+  t.setPadding(dp(18),dp(17),dp(18),dp(17));t.setBackground(surface(panel,18));return t;
+ }
+ void section(String name){spacing(18);TextView t=text(name,19,Color.WHITE);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);layout.addView(t);spacing(5);}
+ Button action(String label,Runnable callback,boolean primary){Button b=button(label,callback);b.setTextColor(primary?bg:Color.WHITE);b.setTextSize(14);b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);b.setBackground(surface(primary?green:panel,14));return b;}
+
  TextView text(String value,int size,int color){TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setTextColor(color);t.setPadding(12,12,12,12);return t;}
- Button button(String value,Runnable action){Button b=new Button(this);b.setText(value);b.setAllCaps(false);b.setOnClickListener(v->action.run());return b;}
+ Button button(String value,Runnable action){Button b=new Button(this);b.setText(value);b.setAllCaps(false);b.setTextColor(Color.WHITE);b.setTextSize(13);b.setBackground(surface(panel,12));b.setOnClickListener(v->action.run());return b;}
  @Override public void onCreate(Bundle b){super.onCreate(b);getWindow().setStatusBarColor(bg);
  if(b!=null){area=b.getString("area","Pessoal");periodo=b.getString("periodo","Mensal");}
  db=openOrCreateDatabase("financas.db",MODE_PRIVATE,null);
@@ -26,11 +39,12 @@ public class MainActivity extends Activity {
  @Override protected void onSaveInstanceState(Bundle state){state.putString("area",area);state.putString("periodo",periodo);super.onSaveInstanceState(state);}
  String reais(long cents){return NumberFormat.getCurrencyInstance(new Locale("pt","BR")).format(java.math.BigDecimal.valueOf(cents,2));}
  void render(){
- ScrollView sc=new ScrollView(this);layout=new LinearLayout(this);layout.setOrientation(1);layout.setPadding(14,14,14,14);layout.setBackgroundColor(bg);sc.addView(layout);setContentView(sc);
- layout.addView(text("MEU CONTROLE FINANCEIRO",15,green));
- layout.addView(text("Visão geral — "+area,25,Color.WHITE));
- LinearLayout scopes=new LinearLayout(this);scopes.addView(button("Pessoal",()->{area="Pessoal";render();}),new LinearLayout.LayoutParams(0,-2,1));scopes.addView(button("Empresa",()->{area="Empresa";render();}),new LinearLayout.LayoutParams(0,-2,1));layout.addView(scopes);
- LinearLayout tabs=new LinearLayout(this);for(String p:new String[]{"Semanal","Mensal","Anual"})tabs.addView(button(p,()->{periodo=p;render();}),new LinearLayout.LayoutParams(0,-2,1));layout.addView(tabs);
+ ScrollView sc=new ScrollView(this);layout=new LinearLayout(this);layout.setOrientation(1);layout.setPadding(dp(18),dp(18),dp(18),dp(28));layout.setBackgroundColor(bg);sc.addView(layout);setContentView(sc);
+ TextView brand=text("◈  MEU CONTROLE",14,green);brand.setTypeface(Typeface.DEFAULT,Typeface.BOLD);layout.addView(brand);
+ TextView heading=text("Olá! Seu dinheiro em dia.",24,Color.WHITE);heading.setTypeface(Typeface.DEFAULT,Typeface.BOLD);layout.addView(heading);
+ layout.addView(text("Visão financeira  •  "+area,13,muted));spacing(12);
+ LinearLayout scopes=new LinearLayout(this);scopes.addView(button("Pessoal",()->{area="Pessoal";render();}),new LinearLayout.LayoutParams(0,-2,1));scopes.addView(button("Empresa",()->{area="Empresa";render();}),new LinearLayout.LayoutParams(0,-2,1));layout.addView(scopes);spacing(8);
+ LinearLayout tabs=new LinearLayout(this);for(String p:new String[]{"Semanal","Mensal","Anual"})tabs.addView(button(p,()->{periodo=p;render();}),new LinearLayout.LayoutParams(0,-2,1));layout.addView(tabs);spacing(14);
  long since=System.currentTimeMillis();Calendar cal=Calendar.getInstance();
  if(periodo.equals("Semanal"))cal.add(Calendar.DAY_OF_YEAR,-7);
  else if(periodo.equals("Mensal"))cal.add(Calendar.MONTH,-1);
@@ -43,29 +57,35 @@ public class MainActivity extends Activity {
  if(tipo.equals("Receita"))in+=v;else out+=v;ids.add(id);
  rows.add((tipo.equals("Receita")?"+ ":"- ")+reais(v)+"  "+descricao+"  "+new SimpleDateFormat("dd/MM",new Locale("pt","BR")).format(new Date(data)));
  }}
- layout.addView(text("Saldo do período: "+reais(in-out),23,green));
- layout.addView(text("Receitas: "+reais(in),19,green));layout.addView(text("Despesas: "+reais(out),19,red));
- layout.addView(text("Comparativo do período",18,Color.WHITE));
- long total=in+out; if(total>0){LinearLayout bars=new LinearLayout(this);bars.setOrientation(1);bars.setPadding(12,8,12,8);bars.setBackgroundColor(panel);addBar(bars,"Receitas",in,total,green);addBar(bars,"Despesas",out,total,red);layout.addView(bars);}else layout.addView(text("Cadastre receitas ou despesas para visualizar o gráfico.",13,Color.LTGRAY));
- layout.addView(button("+ Novo lançamento",this::newEntry));
- layout.addView(button("Exportar todos os lançamentos (CSV)",this::exportCsv));
- layout.addView(text("AGENDA E LEMBRETES",20,green));
- layout.addView(button("+ Agendar lembrete",()->newReminder(-1)));
+ layout.addView(metric("SALDO DO PERÍODO",reais(in-out),in-out>=0?green:red));
+ spacing(9);LinearLayout metrics=new LinearLayout(this);metrics.setOrientation(LinearLayout.HORIZONTAL);
+ TextView income=metric("↑ RECEITAS",reais(in),green);TextView expense=metric("↓ DESPESAS",reais(out),red);
+ LinearLayout.LayoutParams left=new LinearLayout.LayoutParams(0,-2,1);left.setMargins(0,0,dp(5),0);
+ LinearLayout.LayoutParams right=new LinearLayout.LayoutParams(0,-2,1);right.setMargins(dp(5),0,0,0);
+ metrics.addView(income,left);metrics.addView(expense,right);layout.addView(metrics);
+ section("Comparativo do período");
+ long total=in+out; if(total>0){LinearLayout bars=new LinearLayout(this);bars.setOrientation(1);bars.setPadding(dp(14),dp(12),dp(14),dp(12));bars.setBackground(surface(panel,16));addBar(bars,"Receitas",in,total,green);addBar(bars,"Despesas",out,total,red);layout.addView(bars);}else layout.addView(text("Cadastre receitas ou despesas para visualizar o gráfico.",13,Color.LTGRAY));
+ spacing(15);layout.addView(action("＋  Novo lançamento",this::newEntry,true));
+ 
+ section("Agenda e lembretes");
+ layout.addView(action("＋  Agendar lembrete",()->newReminder(-1),false));
  showAgenda();
- layout.addView(button("Restaurar lançamentos de backup CSV",this::importCsv));
- layout.addView(text("Últimos lançamentos",21,Color.WHITE));
+ section("Backup dos seus dados");
+ layout.addView(action("↓  Exportar lançamentos (CSV)",this::exportCsv,false));
+ layout.addView(action("↑  Restaurar backup (CSV)",this::importCsv,false));
+ section("Últimos lançamentos");
  if(rows.isEmpty())layout.addView(text("Nenhum lançamento cadastrado.",15,Color.LTGRAY));
- for(int j=0;j<Math.min(40,rows.size());j++){final long id=ids.get(j);TextView item=text(rows.get(j)+"  •  toque para editar",15,Color.WHITE);item.setBackgroundColor(panel);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(0,0,0,5);layout.addView(item,lp);item.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Lançamento").setItems(new String[]{"Editar","Excluir"},(d,which)->{if(which==0)editEntry(id);else new AlertDialog.Builder(this).setTitle("Excluir lançamento?").setMessage("Esta ação não pode ser desfeita.").setNegativeButton("Cancelar",null).setPositiveButton("Excluir",(a,w)->{db.delete("lancamentos","id=? AND area=?",new String[]{String.valueOf(id),area});render();}).show();}).show());}
+ for(int j=0;j<Math.min(40,rows.size());j++){final long id=ids.get(j);TextView item=text(rows.get(j)+"  •  toque para editar",15,Color.WHITE);item.setPadding(dp(15),dp(17),dp(15),dp(17));item.setBackground(surface(panel,14));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(0,0,0,dp(7));layout.addView(item,lp);item.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Lançamento").setItems(new String[]{"Editar","Excluir"},(d,which)->{if(which==0)editEntry(id);else new AlertDialog.Builder(this).setTitle("Excluir lançamento?").setMessage("Esta ação não pode ser desfeita.").setNegativeButton("Cancelar",null).setPositiveButton("Excluir",(a,w)->{db.delete("lancamentos","id=? AND area=?",new String[]{String.valueOf(id),area});render();}).show();}).show());}
  layout.addView(text("Dados locais. Exporte um CSV para backup e guarde-o em local seguro. Ao restaurar, os registros são acrescentados.",12,Color.LTGRAY));
  }
- void addBar(LinearLayout parent,String name,long value,long total,int color){parent.addView(text(name+": "+reais(value),14,Color.WHITE));LinearLayout track=new LinearLayout(this);track.setBackgroundColor(bg);int width=getResources().getDisplayMetrics().widthPixels-80;int barWidth=(int)Math.max(value>0?4:0,Math.round((double)value/total*width));View fill=new View(this);fill.setBackgroundColor(color);track.addView(fill,new LinearLayout.LayoutParams(barWidth,20));parent.addView(track,new LinearLayout.LayoutParams(-1,20));}
+ void addBar(LinearLayout parent,String name,long value,long total,int color){parent.addView(text(name+": "+reais(value),14,Color.WHITE));LinearLayout track=new LinearLayout(this);track.setBackgroundColor(bg);int width=getResources().getDisplayMetrics().widthPixels-dp(96);int barWidth=(int)Math.max(value>0?4:0,Math.round((double)value/total*width));View fill=new View(this);fill.setBackgroundColor(color);track.addView(fill,new LinearLayout.LayoutParams(barWidth,20));parent.addView(track,new LinearLayout.LayoutParams(-1,20));}
  void showAgenda(){
  SimpleDateFormat fmt=new SimpleDateFormat("dd/MM/yyyy HH:mm",new Locale("pt","BR"));
  try(Cursor c=db.rawQuery("SELECT id,titulo,quando FROM agenda ORDER BY quando ASC LIMIT 50",null)){
  while(c.moveToNext()){
  final int id=c.getInt(0);String name=c.getString(1);long when=c.getLong(2);
  TextView item=text(fmt.format(new Date(when))+" — "+name+" (toque para editar/excluir)",15,Color.WHITE);
- item.setBackgroundColor(panel);layout.addView(item);
+ item.setBackground(surface(panel,14));item.setPadding(dp(15),dp(14),dp(15),dp(14));LinearLayout.LayoutParams ap=new LinearLayout.LayoutParams(-1,-2);ap.setMargins(0,0,0,dp(7));layout.addView(item,ap);
  item.setOnClickListener(v->new AlertDialog.Builder(this).setTitle(name).setItems(new String[]{"Editar","Excluir"},(d,which)->{if(which==0)newReminder(id);else new AlertDialog.Builder(this).setTitle("Excluir lembrete?").setMessage(name).setNegativeButton("Cancelar",null).setPositiveButton("Excluir",(a,w)->{ReminderReceiver.cancel(this,id);db.delete("agenda","id=?",new String[]{String.valueOf(id)});render();}).show();}).show());
  }
  }

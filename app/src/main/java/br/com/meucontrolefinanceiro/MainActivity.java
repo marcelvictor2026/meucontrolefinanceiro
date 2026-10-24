@@ -100,9 +100,11 @@ public class MainActivity extends Activity {
  spacing(15);layout.addView(action("＋  Novo lançamento",this::newEntry,true));
  
  section("WhatsApp");
- final long summaryIncome=in,summaryExpense=out;
- layout.addView(action("↗  Compartilhar resumo pelo WhatsApp",()->shareSummary(summaryIncome,summaryExpense),false));
- layout.addView(text("Envie o resumo pelo WhatsApp. Para cadastrar movimentações recebidas por mensagem, será necessária a conexão segura com WhatsApp Business.",12,muted));
+ boolean capture=getSharedPreferences(WhatsAppNotificationService.PREFS,MODE_PRIVATE).getBoolean(WhatsAppNotificationService.ENABLED,false);
+ layout.addView(text("Leitura de notificações: "+(capture?"ATIVADA":"DESATIVADA"),14,capture?green:muted));
+ layout.addView(action(capture?"Desativar monitoramento do WhatsApp":"Ativar monitoramento do WhatsApp",()->toggleWhatsAppCapture(),true));
+ layout.addView(action("Configurar acesso às notificações",()->startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")),false));
+ layout.addView(text("Somente notificações com indícios de movimentação financeira geram um aviso de revisão. Nenhuma mensagem é salva como lançamento sem sua confirmação. O Android precisa autorizar o acesso às notificações.",12,muted));
  section("Agenda inteligente");
  layout.addView(action("＋  Agendar lembrete",()->newReminder(-1),false));
  showAgenda();
@@ -113,6 +115,14 @@ public class MainActivity extends Activity {
  if(rows.isEmpty())layout.addView(text("Nenhum lançamento cadastrado.",15,Color.LTGRAY));
  for(int j=0;j<Math.min(40,rows.size());j++){final long id=ids.get(j);TextView item=text(rows.get(j)+"  •  toque para editar",15,Color.WHITE);item.setPadding(dp(15),dp(17),dp(15),dp(17));item.setBackground(surface(panel,18));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(0,0,0,dp(7));layout.addView(item,lp);item.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Lançamento").setItems(new String[]{"Editar","Excluir"},(d,which)->{if(which==0)editEntry(id);else new AlertDialog.Builder(this).setTitle("Excluir lançamento?").setMessage("Esta ação não pode ser desfeita.").setNegativeButton("Cancelar",null).setPositiveButton("Excluir",(a,w)->{db.delete("lancamentos","id=? AND area=?",new String[]{String.valueOf(id),area});render();}).show();}).show());}
  layout.addView(text("Dados locais. Exporte um CSV para backup e guarde-o em local seguro. Ao restaurar, os registros são acrescentados.",12,Color.LTGRAY));
+ }
+ void toggleWhatsAppCapture(){
+ boolean current=getSharedPreferences(WhatsAppNotificationService.PREFS,MODE_PRIVATE).getBoolean(WhatsAppNotificationService.ENABLED,false);
+ if(current){getSharedPreferences(WhatsAppNotificationService.PREFS,MODE_PRIVATE).edit().putBoolean(WhatsAppNotificationService.ENABLED,false).apply();render();return;}
+ new AlertDialog.Builder(this).setTitle("Autorizar leitura de notificações?")
+ .setMessage("O aplicativo poderá ler o texto das notificações do WhatsApp para identificar possíveis receitas e despesas. Apenas mensagens com sinais financeiros geram um aviso. A confirmação é obrigatória para salvar. O acesso pode ser revogado nas configurações do Android. Notificações ocultas, silenciadas ou conversas abertas podem não ser detectadas.")
+ .setNegativeButton("Cancelar",null)
+ .setPositiveButton("Ativar",(d,w)->{getSharedPreferences(WhatsAppNotificationService.PREFS,MODE_PRIVATE).edit().putBoolean(WhatsAppNotificationService.ENABLED,true).apply();startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));render();}).show();
  }
  void shareSummary(long income,long expense){
   String message="*MEU CONTROLE FINANCEIRO*\\n"+

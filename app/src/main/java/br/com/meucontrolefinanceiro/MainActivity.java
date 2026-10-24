@@ -19,6 +19,8 @@ public class MainActivity extends Activity {
  @Override public void onCreate(Bundle b){super.onCreate(b);getWindow().setStatusBarColor(bg);
  db=openOrCreateDatabase("financas.db",MODE_PRIVATE,null);
  db.execSQL("CREATE TABLE IF NOT EXISTS lancamentos(id INTEGER PRIMARY KEY,area TEXT,tipo TEXT,descricao TEXT,valor INTEGER,data INTEGER)");
+ db.execSQL("CREATE TABLE IF NOT EXISTS agenda(id INTEGER PRIMARY KEY AUTOINCREMENT,titulo TEXT NOT NULL,quando INTEGER NOT NULL)");
+ if(android.os.Build.VERSION.SDK_INT>=33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS")!=android.content.pm.PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"},123);
  render();}
  String reais(long cents){return NumberFormat.getCurrencyInstance(new Locale("pt","BR")).format(cents/100.0);}
  void render(){
@@ -45,6 +47,9 @@ public class MainActivity extends Activity {
  long total=in+out; if(total>0){LinearLayout bars=new LinearLayout(this);bars.setOrientation(1);bars.setPadding(12,8,12,8);bars.setBackgroundColor(panel);addBar(bars,"Receitas",in,total,green);addBar(bars,"Despesas",out,total,red);layout.addView(bars);}else layout.addView(text("Cadastre receitas ou despesas para visualizar o gráfico.",13,Color.LTGRAY));
  layout.addView(button("+ Novo lançamento",this::newEntry));
  layout.addView(button("Exportar todos os lançamentos (CSV)",this::exportCsv));
+ layout.addView(text("AGENDA E LEMBRETES",20,green));
+ layout.addView(button("+ Agendar lembrete",this::newReminder));
+ showAgenda();
  layout.addView(button("Restaurar lançamentos de backup CSV",this::importCsv));
  layout.addView(text("Últimos lançamentos",21,Color.WHITE));
  if(rows.isEmpty())layout.addView(text("Nenhum lançamento cadastrado.",15,Color.LTGRAY));
@@ -52,6 +57,34 @@ public class MainActivity extends Activity {
  layout.addView(text("Dados locais. Exporte um CSV para backup e guarde-o em local seguro. Ao restaurar, os registros são acrescentados.",12,Color.LTGRAY));
  }
  void addBar(LinearLayout parent,String name,long value,long total,int color){parent.addView(text(name+": "+reais(value),14,Color.WHITE));LinearLayout track=new LinearLayout(this);track.setBackgroundColor(bg);int width=getResources().getDisplayMetrics().widthPixels-80;int barWidth=(int)Math.max(value>0?4:0,Math.round((double)value/total*width));View fill=new View(this);fill.setBackgroundColor(color);track.addView(fill,new LinearLayout.LayoutParams(barWidth,20));parent.addView(track,new LinearLayout.LayoutParams(-1,20));}
+ void showAgenda(){
+ SimpleDateFormat fmt=new SimpleDateFormat("dd/MM/yyyy HH:mm",new Locale("pt","BR"));
+ try(Cursor c=db.rawQuery("SELECT id,titulo,quando FROM agenda ORDER BY quando ASC LIMIT 50",null)){
+ while(c.moveToNext()){
+ final int id=c.getInt(0);String name=c.getString(1);long when=c.getLong(2);
+ TextView item=text(fmt.format(new Date(when))+" — "+name+" (toque para excluir)",15,Color.WHITE);
+ item.setBackgroundColor(panel);layout.addView(item);
+ item.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Excluir lembrete?").setMessage(name).setNegativeButton("Cancelar",null).setPositiveButton("Excluir",(d,w)->{ReminderReceiver.cancel(this,id);db.delete("agenda","id=?",new String[]{String.valueOf(id)});render();}).show());
+ }
+ }
+ }
+ void newReminder(){
+ EditText title=new EditText(this);title.setSingleLine(true);title.setHint("Descrição do compromisso");
+ LinearLayout form=new LinearLayout(this);form.setOrientation(1);form.setPadding(20,8,20,8);form.addView(title);
+ Calendar selected=Calendar.getInstance();selected.add(Calendar.HOUR_OF_DAY,1);selected.set(Calendar.SECOND,0);selected.set(Calendar.MILLISECOND,0);
+ SimpleDateFormat fmt=new SimpleDateFormat("dd/MM/yyyy HH:mm",new Locale("pt","BR"));
+ Button date=button("Data: "+fmt.format(selected.getTime()),()->{});
+ date.setOnClickListener(v->new DatePickerDialog(this,(view,y,m,d)->{selected.set(y,m,d);date.setText("Data: "+fmt.format(selected.getTime()));},selected.get(Calendar.YEAR),selected.get(Calendar.MONTH),selected.get(Calendar.DAY_OF_MONTH)).show());
+ Button time=button("Horário: "+new SimpleDateFormat("HH:mm",new Locale("pt","BR")).format(selected.getTime()),()->{});
+ time.setOnClickListener(v->new TimePickerDialog(this,(view,h,min)->{selected.set(Calendar.HOUR_OF_DAY,h);selected.set(Calendar.MINUTE,min);time.setText(String.format(new Locale("pt","BR"),"Horário: %02d:%02d",h,min));date.setText("Data: "+fmt.format(selected.getTime()));},selected.get(Calendar.HOUR_OF_DAY),selected.get(Calendar.MINUTE),true).show());
+ form.addView(date);form.addView(time);
+ new AlertDialog.Builder(this).setTitle("Novo lembrete").setView(form).setNegativeButton("Cancelar",null).setPositiveButton("Agendar",(d,w)->{
+ String name=title.getText().toString().trim();long when=selected.getTimeInMillis();
+ if(name.isEmpty()||when<=System.currentTimeMillis()){Toast.makeText(this,"Informe descrição e data futura",Toast.LENGTH_LONG).show();return;}
+ ContentValues values=new ContentValues();values.put("titulo",name);values.put("quando",when);
+ long id=db.insert("agenda",null,values);if(id>0){ReminderReceiver.schedule(this,(int)id,when);render();Toast.makeText(this,"Lembrete agendado. Ative as notificações.",Toast.LENGTH_LONG).show();}
+ }).show();
+ }
  void importCsv(){
  new AlertDialog.Builder(this).setTitle("Restaurar backup").setMessage("Importe um arquivo CSV exportado por este aplicativo. Os lançamentos importados serão acrescentados aos existentes; importe uma única vez para evitar duplicatas.").setNegativeButton("Cancelar",null).setPositiveButton("Selecionar arquivo",(d,w)->{
  Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT);intent.addCategory(Intent.CATEGORY_OPENABLE);intent.setType("*/*");intent.addCategory(Intent.CATEGORY_OPENABLE);startActivityForResult(intent,1002);

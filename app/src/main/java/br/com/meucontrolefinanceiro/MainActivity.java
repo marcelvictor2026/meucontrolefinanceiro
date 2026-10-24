@@ -24,6 +24,18 @@ public class MainActivity extends Activity {
   TextView t=text(label+"\n"+amount,19,accent);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);t.setLineSpacing(dp(5),1);
   t.setPadding(dp(18),dp(17),dp(18),dp(17));t.setBackground(surface(panel,22));t.setElevation(dp(4));return t;
  }
+ TextView areaButton(String name,String subtitle,String symbol,int accent){
+  boolean active=area.equals(name);
+  TextView t=text(symbol+"  "+name+"\\n"+subtitle,16,active?bg:Color.WHITE);
+  t.setTypeface(Typeface.DEFAULT,active?Typeface.BOLD:Typeface.NORMAL);
+  t.setGravity(Gravity.CENTER_VERTICAL);t.setLineSpacing(dp(7),1f);
+  t.setPadding(dp(16),dp(20),dp(10),dp(20));
+  GradientDrawable d=new GradientDrawable(GradientDrawable.Orientation.TL_BR,active?new int[]{accent,Color.rgb(17,182,164)}:new int[]{panel,Color.rgb(9,21,40)});
+  d.setCornerRadius(dp(22));d.setStroke(dp(active?2:1),active?accent:stroke);
+  t.setBackground(d);t.setElevation(dp(active?8:2));
+  t.setOnClickListener(v->{if(!area.equals(name)){area=name;render();}});
+  return t;
+ }
  void section(String name){spacing(22);TextView t=text("✦  "+name,18,Color.WHITE);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);layout.addView(t);spacing(5);}
  Button action(String label,Runnable callback,boolean primary){Button b=button(label,callback);b.setTextColor(primary?bg:Color.WHITE);b.setTextSize(14);b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);b.setBackground(surface(primary?green:panel,18));b.setElevation(dp(5));b.setMinHeight(dp(52));return b;}
 
@@ -45,7 +57,15 @@ public class MainActivity extends Activity {
  TextView brand=text("VS  •  MEU CONTROLE FINANCEIRO",14,green);brand.setTypeface(Typeface.DEFAULT,Typeface.BOLD);brandRow.addView(brand);brandRow.setPadding(dp(8),dp(7),dp(8),dp(7));brandRow.setBackground(surface(panel,20));layout.addView(brandRow);spacing(15);
  TextView heading=text("Seu futuro financeiro.",24,Color.WHITE);heading.setTypeface(Typeface.DEFAULT,Typeface.BOLD);layout.addView(heading);
  layout.addView(text("PAINEL INTELIGENTE  /  "+area.toUpperCase(new Locale("pt","BR")),12,cyan));spacing(12);
- LinearLayout scopes=new LinearLayout(this);scopes.addView(button((area.equals("Pessoal")?"●  ":"")+"Pessoal",()->{area="Pessoal";render();}),new LinearLayout.LayoutParams(0,-2,1));scopes.addView(button((area.equals("Empresa")?"●  ":"")+"Empresa",()->{area="Empresa";render();}),new LinearLayout.LayoutParams(0,-2,1));layout.addView(scopes);spacing(8);
+ TextView switchTitle=text("ESCOLHA SEU PAINEL",12,muted);switchTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);layout.addView(switchTitle);spacing(5);
+ LinearLayout scopes=new LinearLayout(this);scopes.setOrientation(LinearLayout.HORIZONTAL);
+ LinearLayout.LayoutParams personalParams=new LinearLayout.LayoutParams(0,dp(102),1);personalParams.setMargins(0,0,dp(6),0);
+ LinearLayout.LayoutParams businessParams=new LinearLayout.LayoutParams(0,dp(102),1);businessParams.setMargins(dp(6),0,0,0);
+ scopes.addView(areaButton("Pessoal","Minhas finanças","◉",green),personalParams);
+ scopes.addView(areaButton("Empresa","Gestão do negócio","▣",cyan),businessParams);
+ layout.addView(scopes);spacing(10);
+ TextView selected=text(area.equals("Pessoal")?"●  ÁREA PESSOAL ATIVA":"●  ÁREA EMPRESARIAL ATIVA",12,area.equals("Pessoal")?green:cyan);
+ selected.setTypeface(Typeface.DEFAULT,Typeface.BOLD);layout.addView(selected);spacing(9);
  LinearLayout tabs=new LinearLayout(this);for(String p:new String[]{"Semanal","Mensal","Anual"})tabs.addView(button((periodo.equals(p)?"● ":"")+p,()->{periodo=p;render();}),new LinearLayout.LayoutParams(0,-2,1));layout.addView(tabs);spacing(14);
  long since=System.currentTimeMillis();Calendar cal=Calendar.getInstance();
  if(periodo.equals("Semanal"))cal.add(Calendar.DAY_OF_YEAR,-7);

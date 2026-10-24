@@ -15,8 +15,8 @@ import java.io.*;
 
 public class MainActivity extends Activity {
  SQLiteDatabase db; LinearLayout layout; String area="Pessoal",periodo="Mensal";
- int bg=Color.rgb(8,8,10), panel=Color.rgb(29,27,27), green=Color.rgb(45,210,135), red=Color.rgb(255,96,96), cyan=Color.rgb(255,142,35);
- int muted=Color.rgb(183,169,157), stroke=Color.rgb(98,61,37);
+ int bg=Color.rgb(8,8,10), panel=Color.rgb(29,27,24), green=Color.rgb(45,210,135), red=Color.rgb(255,96,96), cyan=Color.rgb(255,163,36), gold=Color.rgb(255,213,69);
+ int muted=Color.rgb(194,180,157), stroke=Color.rgb(114,75,34);
  int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+.5f);}
  GradientDrawable surface(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColors(new int[]{color,Color.rgb(12,11,12)});d.setOrientation(GradientDrawable.Orientation.TL_BR);d.setCornerRadius(dp(radius));d.setStroke(dp(1),stroke);return d;}
  void spacing(int h){View v=new View(this);layout.addView(v,new LinearLayout.LayoutParams(1,dp(h)));}
@@ -30,14 +30,14 @@ public class MainActivity extends Activity {
   t.setTypeface(Typeface.DEFAULT,active?Typeface.BOLD:Typeface.NORMAL);
   t.setGravity(Gravity.CENTER_VERTICAL);t.setLineSpacing(dp(7),1f);
   t.setPadding(dp(16),dp(20),dp(10),dp(20));
-  GradientDrawable d=new GradientDrawable(GradientDrawable.Orientation.TL_BR,active?new int[]{Color.rgb(255,173,60),Color.rgb(230,86,14)}:new int[]{panel,Color.rgb(9,21,40)});
-  d.setCornerRadius(dp(22));d.setStroke(dp(active?2:1),active?Color.rgb(255,179,83):stroke);
+  GradientDrawable d=new GradientDrawable(GradientDrawable.Orientation.TL_BR,active?new int[]{gold,Color.rgb(255,143,27),Color.rgb(222,78,13)}:new int[]{panel,Color.rgb(9,21,40)});
+  d.setCornerRadius(dp(22));d.setStroke(dp(active?2:1),active?gold:stroke);
   t.setBackground(d);t.setElevation(dp(active?8:2));
   t.setOnClickListener(v->{if(!area.equals(name)){area=name;render();}});
   return t;
  }
  void section(String name){spacing(22);TextView t=text("✦  "+name,18,Color.WHITE);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);layout.addView(t);spacing(5);}
- Button action(String label,Runnable callback,boolean primary){Button b=button(label,callback);b.setTextColor(primary?Color.BLACK:Color.WHITE);b.setTextSize(14);b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);b.setBackground(primary?new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,new int[]{Color.rgb(255,176,57),Color.rgb(236,92,15)}):surface(panel,18));b.setElevation(dp(5));b.setMinHeight(dp(52));return b;}
+ Button action(String label,Runnable callback,boolean primary){Button b=button(label,callback);b.setTextColor(primary?Color.BLACK:Color.WHITE);b.setTextSize(14);b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);b.setBackground(primary?new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,new int[]{gold,Color.rgb(255,154,29),Color.rgb(233,91,15)}):surface(panel,18));b.setElevation(dp(5));b.setMinHeight(dp(52));return b;}
 
  TextView text(String value,int size,int color){TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setTextColor(color);t.setPadding(12,12,12,12);return t;}
  Button button(String value,Runnable action){Button b=new Button(this);b.setText(value);b.setAllCaps(false);b.setTextColor(Color.WHITE);b.setTextSize(13);b.setBackground(surface(panel,16));b.setMinHeight(dp(44));b.setOnClickListener(v->action.run());return b;}
@@ -54,10 +54,10 @@ public class MainActivity extends Activity {
  ScrollView sc=new ScrollView(this);layout=new LinearLayout(this);layout.setOrientation(1);layout.setPadding(dp(18),dp(24),dp(18),dp(36));layout.setBackgroundColor(bg);sc.addView(layout);setContentView(sc);
  LinearLayout brandRow=new LinearLayout(this);brandRow.setGravity(Gravity.CENTER_VERTICAL);
  ImageView logo=new ImageView(this);logo.setImageResource(R.drawable.app_brand_icon);brandRow.addView(logo,new LinearLayout.LayoutParams(dp(54),dp(54)));
- TextView brand=text("VS  •  MEU CONTROLE FINANCEIRO",14,cyan);brand.setTypeface(Typeface.DEFAULT,Typeface.BOLD);brandRow.addView(brand);brandRow.setPadding(dp(8),dp(7),dp(8),dp(7));brandRow.setBackground(surface(panel,20));layout.addView(brandRow);spacing(15);
+ TextView brand=text("VS  •  MEU CONTROLE FINANCEIRO",14,gold);brand.setTypeface(Typeface.DEFAULT,Typeface.BOLD);brandRow.addView(brand);brandRow.setPadding(dp(8),dp(7),dp(8),dp(7));brandRow.setBackground(surface(panel,20));layout.addView(brandRow);spacing(15);
  TextView heading=text("Seu futuro financeiro.",24,Color.WHITE);heading.setTypeface(Typeface.DEFAULT,Typeface.BOLD);layout.addView(heading);
  layout.addView(text("PAINEL INTELIGENTE  /  "+area.toUpperCase(new Locale("pt","BR")),12,cyan));spacing(12);
- TextView switchTitle=text("ESCOLHA SEU PAINEL",12,muted);switchTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);layout.addView(switchTitle);spacing(5);
+ TextView switchTitle=text("ESCOLHA SEU PAINEL",12,gold);switchTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);layout.addView(switchTitle);spacing(5);
  LinearLayout scopes=new LinearLayout(this);scopes.setOrientation(LinearLayout.HORIZONTAL);
  LinearLayout.LayoutParams personalParams=new LinearLayout.LayoutParams(0,dp(102),1);personalParams.setMargins(0,0,dp(6),0);
  LinearLayout.LayoutParams businessParams=new LinearLayout.LayoutParams(0,dp(102),1);businessParams.setMargins(dp(6),0,0,0);
@@ -79,7 +79,7 @@ public class MainActivity extends Activity {
  if(tipo.equals("Receita"))in+=v;else out+=v;ids.add(id);
  rows.add((tipo.equals("Receita")?"+ ":"- ")+reais(v)+"  "+descricao+"  "+new SimpleDateFormat("dd/MM",new Locale("pt","BR")).format(new Date(data)));
  }}
- layout.addView(metric("◈  SALDO DO PERÍODO",reais(in-out),in-out>=0?cyan:red));
+ layout.addView(metric("◈  SALDO DO PERÍODO",reais(in-out),in-out>=0?gold:red));
  spacing(9);LinearLayout metrics=new LinearLayout(this);metrics.setOrientation(LinearLayout.HORIZONTAL);
  TextView income=metric("↑ RECEITAS",reais(in),green);TextView expense=metric("↓ DESPESAS",reais(out),red);
  LinearLayout.LayoutParams left=new LinearLayout.LayoutParams(0,-2,1);left.setMargins(0,0,dp(5),0);

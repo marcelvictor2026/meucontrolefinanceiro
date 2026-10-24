@@ -17,12 +17,14 @@ public class MainActivity extends Activity {
  TextView text(String value,int size,int color){TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setTextColor(color);t.setPadding(12,12,12,12);return t;}
  Button button(String value,Runnable action){Button b=new Button(this);b.setText(value);b.setAllCaps(false);b.setOnClickListener(v->action.run());return b;}
  @Override public void onCreate(Bundle b){super.onCreate(b);getWindow().setStatusBarColor(bg);
+ if(b!=null){area=b.getString("area","Pessoal");periodo=b.getString("periodo","Mensal");}
  db=openOrCreateDatabase("financas.db",MODE_PRIVATE,null);
  db.execSQL("CREATE TABLE IF NOT EXISTS lancamentos(id INTEGER PRIMARY KEY,area TEXT,tipo TEXT,descricao TEXT,valor INTEGER,data INTEGER)");
  db.execSQL("CREATE TABLE IF NOT EXISTS agenda(id INTEGER PRIMARY KEY AUTOINCREMENT,titulo TEXT NOT NULL,quando INTEGER NOT NULL)");
  if(android.os.Build.VERSION.SDK_INT>=33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS")!=android.content.pm.PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"},123);
  render();}
- String reais(long cents){return NumberFormat.getCurrencyInstance(new Locale("pt","BR")).format(cents/100.0);}
+ @Override protected void onSaveInstanceState(Bundle state){state.putString("area",area);state.putString("periodo",periodo);super.onSaveInstanceState(state);}
+ String reais(long cents){return NumberFormat.getCurrencyInstance(new Locale("pt","BR")).format(java.math.BigDecimal.valueOf(cents,2));}
  void render(){
  ScrollView sc=new ScrollView(this);layout=new LinearLayout(this);layout.setOrientation(1);layout.setPadding(14,14,14,14);layout.setBackgroundColor(bg);sc.addView(layout);setContentView(sc);
  layout.addView(text("MEU CONTROLE FINANCEIRO",15,green));
@@ -48,7 +50,7 @@ public class MainActivity extends Activity {
  layout.addView(button("+ Novo lançamento",this::newEntry));
  layout.addView(button("Exportar todos os lançamentos (CSV)",this::exportCsv));
  layout.addView(text("AGENDA E LEMBRETES",20,green));
- layout.addView(button("+ Agendar lembrete",this::newReminder));
+ layout.addView(button("+ Agendar lembrete",()->newReminder(-1)));
  showAgenda();
  layout.addView(button("Restaurar lançamentos de backup CSV",this::importCsv));
  layout.addView(text("Últimos lançamentos",21,Color.WHITE));
@@ -62,27 +64,31 @@ public class MainActivity extends Activity {
  try(Cursor c=db.rawQuery("SELECT id,titulo,quando FROM agenda ORDER BY quando ASC LIMIT 50",null)){
  while(c.moveToNext()){
  final int id=c.getInt(0);String name=c.getString(1);long when=c.getLong(2);
- TextView item=text(fmt.format(new Date(when))+" — "+name+" (toque para excluir)",15,Color.WHITE);
+ TextView item=text(fmt.format(new Date(when))+" — "+name+" (toque para editar/excluir)",15,Color.WHITE);
  item.setBackgroundColor(panel);layout.addView(item);
- item.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Excluir lembrete?").setMessage(name).setNegativeButton("Cancelar",null).setPositiveButton("Excluir",(d,w)->{ReminderReceiver.cancel(this,id);db.delete("agenda","id=?",new String[]{String.valueOf(id)});render();}).show());
+ item.setOnClickListener(v->new AlertDialog.Builder(this).setTitle(name).setItems(new String[]{"Editar","Excluir"},(d,which)->{if(which==0)newReminder(id);else new AlertDialog.Builder(this).setTitle("Excluir lembrete?").setMessage(name).setNegativeButton("Cancelar",null).setPositiveButton("Excluir",(a,w)->{ReminderReceiver.cancel(this,id);db.delete("agenda","id=?",new String[]{String.valueOf(id)});render();}).show();}).show());
  }
  }
  }
- void newReminder(){
+ void newReminder(int editingId){
  EditText title=new EditText(this);title.setSingleLine(true);title.setHint("Descrição do compromisso");
  LinearLayout form=new LinearLayout(this);form.setOrientation(1);form.setPadding(20,8,20,8);form.addView(title);
  Calendar selected=Calendar.getInstance();selected.add(Calendar.HOUR_OF_DAY,1);selected.set(Calendar.SECOND,0);selected.set(Calendar.MILLISECOND,0);
+ if(editingId>=0){try(Cursor c=db.rawQuery("SELECT titulo,quando FROM agenda WHERE id=?",new String[]{String.valueOf(editingId)})){if(c.moveToFirst()){title.setText(c.getString(0));selected.setTimeInMillis(c.getLong(1));}}}
  SimpleDateFormat fmt=new SimpleDateFormat("dd/MM/yyyy HH:mm",new Locale("pt","BR"));
  Button date=button("Data: "+fmt.format(selected.getTime()),()->{});
  date.setOnClickListener(v->new DatePickerDialog(this,(view,y,m,d)->{selected.set(y,m,d);date.setText("Data: "+fmt.format(selected.getTime()));},selected.get(Calendar.YEAR),selected.get(Calendar.MONTH),selected.get(Calendar.DAY_OF_MONTH)).show());
  Button time=button("Horário: "+new SimpleDateFormat("HH:mm",new Locale("pt","BR")).format(selected.getTime()),()->{});
  time.setOnClickListener(v->new TimePickerDialog(this,(view,h,min)->{selected.set(Calendar.HOUR_OF_DAY,h);selected.set(Calendar.MINUTE,min);time.setText(String.format(new Locale("pt","BR"),"Horário: %02d:%02d",h,min));date.setText("Data: "+fmt.format(selected.getTime()));},selected.get(Calendar.HOUR_OF_DAY),selected.get(Calendar.MINUTE),true).show());
  form.addView(date);form.addView(time);
- new AlertDialog.Builder(this).setTitle("Novo lembrete").setView(form).setNegativeButton("Cancelar",null).setPositiveButton("Agendar",(d,w)->{
+ new AlertDialog.Builder(this).setTitle(editingId>=0?"Editar lembrete":"Novo lembrete").setView(form).setNegativeButton("Cancelar",null).setPositiveButton("Agendar",(d,w)->{
  String name=title.getText().toString().trim();long when=selected.getTimeInMillis();
  if(name.isEmpty()||when<=System.currentTimeMillis()){Toast.makeText(this,"Informe descrição e data futura",Toast.LENGTH_LONG).show();return;}
  ContentValues values=new ContentValues();values.put("titulo",name);values.put("quando",when);
- long id=db.insert("agenda",null,values);if(id>0){ReminderReceiver.schedule(this,(int)id,when);render();Toast.makeText(this,"Lembrete agendado. Ative as notificações.",Toast.LENGTH_LONG).show();}
+ long id;
+ if(editingId>=0){ReminderReceiver.cancel(this,editingId);id=db.update("agenda",values,"id=?",new String[]{String.valueOf(editingId)})>0?editingId:-1;}
+ else id=db.insert("agenda",null,values);
+ if(id>0){ReminderReceiver.schedule(this,(int)id,when);render();Toast.makeText(this,"Lembrete salvo. Ative as notificações.",Toast.LENGTH_LONG).show();}
  }).show();
  }
  void importCsv(){

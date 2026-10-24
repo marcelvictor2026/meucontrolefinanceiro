@@ -121,7 +121,7 @@ public class MainActivity extends Activity {
     "Despesas: "+reais(expense)+"\\n"+
     "Saldo: "+reais(income-expense)+"\\n"+
     "Resumo gerado em "+new SimpleDateFormat("dd/MM/yyyy HH:mm",new Locale("pt","BR")).format(new Date());
-  Intent send=new Intent(Intent.ACTION_SEND);send.setType("text/plain");send.putExtra(Intent.EXTRA_TEXT",message);
+  Intent send=new Intent(Intent.ACTION_SEND);send.setType("text/plain");send.putExtra(Intent.EXTRA_TEXT,message);
   try{startActivity(Intent.createChooser(send,"Compartilhar resumo pelo WhatsApp"));}
   catch(android.content.ActivityNotFoundException e){Toast.makeText(this,"Nenhum aplicativo disponível para compartilhar",Toast.LENGTH_LONG).show();}
  }

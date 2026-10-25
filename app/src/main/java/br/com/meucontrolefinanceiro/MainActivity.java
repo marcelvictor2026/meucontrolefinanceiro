@@ -106,13 +106,16 @@ public class MainActivity extends Activity {
  long total=in+out; if(total>0){LinearLayout bars=new LinearLayout(this);bars.setOrientation(1);bars.setPadding(dp(14),dp(12),dp(14),dp(12));bars.setBackground(surface(panel,22));addBar(bars,"Receitas",in,total,green);addBar(bars,"Despesas",out,total,red);layout.addView(bars);}else layout.addView(text("Cadastre receitas ou despesas para visualizar o gráfico.",13,Color.LTGRAY));
  spacing(15);layout.addView(action("＋  Novo lançamento",this::newEntry,true));
  
- section("AGENDA");
+ LinearLayout mainPanel=layout;
+ layout=foldSection("AGENDA");
  layout.addView(action("＋  Agendar lembrete",()->newReminder(-1),false));
  showAgenda();
- section("SEGURANÇA E BACKUP");
+ layout=mainPanel;
+ layout=foldSection("SEGURANÇA E BACKUP");
  layout.addView(action("↓  Exportar lançamentos (CSV)",this::exportCsv,false));
  layout.addView(action("↑  Restaurar backup (CSV)",this::importCsv,false));
- section("ÚLTIMAS MOVIMENTAÇÕES");
+ layout=mainPanel;
+  section("ÚLTIMAS MOVIMENTAÇÕES");
  if(rows.isEmpty())layout.addView(text("Nenhum lançamento cadastrado.",15,Color.LTGRAY));
  for(int j=0;j<Math.min(40,rows.size());j++){final long id=ids.get(j);TextView item=text(rows.get(j)+"  •  toque para editar",15,Color.WHITE);item.setPadding(dp(15),dp(17),dp(15),dp(17));item.setBackground(surface(panel,18));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(0,0,0,dp(7));layout.addView(item,lp);item.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Lançamento").setItems(new String[]{"Editar","Excluir"},(d,which)->{if(which==0)editEntry(id);else new AlertDialog.Builder(this).setTitle("Excluir lançamento?").setMessage("Esta ação não pode ser desfeita.").setNegativeButton("Cancelar",null).setPositiveButton("Excluir",(a,w)->{db.delete("lancamentos","id=? AND area=?",new String[]{String.valueOf(id),area});render();}).show();}).show());}
  layout.addView(text("Dados locais. Exporte um CSV para backup e guarde-o em local seguro. Ao restaurar, os registros são acrescentados.",12,Color.LTGRAY));

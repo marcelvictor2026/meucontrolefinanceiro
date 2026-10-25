@@ -122,7 +122,7 @@ public class MainActivity extends Activity {
  new AlertDialog.Builder(this).setTitle("Autorizar leitura de notificações?")
  .setMessage("O aplicativo poderá ler o texto das notificações do WhatsApp para identificar possíveis receitas e despesas. Apenas mensagens com sinais financeiros geram um aviso. A confirmação é obrigatória para salvar. O acesso pode ser revogado nas configurações do Android. Notificações ocultas, silenciadas ou conversas abertas podem não ser detectadas.")
  .setNegativeButton("Cancelar",null)
- .setPositiveButton("Ativar",(d,w)->{getSharedPreferences(WhatsAppNotificationService.PREFS,MODE_PRIVATE).edit().putBoolean(WhatsAppNotificationService.ENABLED,true).apply();startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));render();}).show();
+ .setPositiveButton("Ativar",(d,w)->{getSharedPreferences(WhatsAppNotificationService.PREFS,MODE_PRIVATE).edit().putBoolean(WhatsAppNotificationService.ENABLED,true).apply();if(android.os.Build.VERSION.SDK_INT>=33&&checkSelfPermission("android.permission.POST_NOTIFICATIONS")!=android.content.pm.PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"},101);startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));render();}).show();
  }
  void shareSummary(long income,long expense){
   String message="*MEU CONTROLE FINANCEIRO*\\n"+

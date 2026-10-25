@@ -27,9 +27,13 @@ public class ShareImportActivity extends Activity {
   String low=raw.toLowerCase(new Locale("pt","BR"));
   boolean expense=Pattern.compile("\\b(paguei|gastei|despesa|compra|pago|saída|saida)\\b").matcher(low).find();
   boolean revenue=Pattern.compile("\\b(recebi|recebido|receita|entrou|pagamento recebido|entrada)\\b").matcher(low).find();
-  Matcher money=Pattern.compile("(?:R\\$\\s*)?([0-9]{1,3}(?:\\.[0-9]{3})+(?:,[0-9]{1,2})?|[0-9]+(?:,[0-9]{1,2})?)").matcher(raw);
+  Matcher money=Pattern.compile("(?i)R\\$\\s*([0-9]{1,3}(?:\\.[0-9]{3})+(?:,[0-9]{1,2})?|[0-9]+(?:[.,][0-9]{1,2})?)").matcher(raw);
   String amount="";boolean ambiguous=false;
-  while(money.find()){String match=money.group(1);if(!match.isEmpty()){if(!amount.isEmpty()){ambiguous=true;break;}amount=match;}}
+  while(money.find()){if(!amount.isEmpty()){ambiguous=true;break;}amount=money.group(1);}
+  if(amount.isEmpty()){
+   Matcher decimal=Pattern.compile("(?<![\\d/:])([0-9]{1,3}(?:\\.[0-9]{3})+,[0-9]{2}|[0-9]+,[0-9]{2})(?![\\d/:])").matcher(raw);
+   while(decimal.find()){if(!amount.isEmpty()){ambiguous=true;break;}amount=decimal.group(1);}
+  }
   // Dates and other numbers can look like money. User must always verify.
   Calendar selected=Calendar.getInstance();
   if(low.contains("ontem"))selected.add(Calendar.DAY_OF_MONTH,-1);

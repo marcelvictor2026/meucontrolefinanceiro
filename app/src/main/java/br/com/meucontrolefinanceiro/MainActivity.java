@@ -36,6 +36,13 @@ public class MainActivity extends Activity {
   t.setOnClickListener(v->{if(!area.equals(name)){area=name;render();}});
   return t;
  }
+ LinearLayout foldSection(String title){
+  LinearLayout box=new LinearLayout(this);box.setOrientation(1);box.setBackground(surface(panel,16));layout.addView(box);
+  TextView header=text(">  "+title,16,gold);header.setPadding(dp(16),dp(14),dp(16),dp(14));box.addView(header);
+  LinearLayout content=new LinearLayout(this);content.setOrientation(1);content.setPadding(dp(12),0,dp(12),dp(12));content.setVisibility(View.GONE);box.addView(content);
+  header.setOnClickListener(v->{boolean open=content.getVisibility()==View.GONE;content.setVisibility(open?View.VISIBLE:View.GONE);header.setText((open?"v  ":">  ")+title);});
+  return content;
+ }
  void section(String name){spacing(22);TextView t=text("✦  "+name,18,Color.WHITE);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);layout.addView(t);spacing(5);}
  Button action(String label,Runnable callback,boolean primary){Button b=button(label,callback);b.setTextColor(primary?Color.BLACK:Color.WHITE);b.setTextSize(14);b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);b.setBackground(primary?new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,new int[]{Color.rgb(248,220,151),gold,Color.rgb(163,117,46)}):surface(panel,18));b.setElevation(dp(5));b.setMinHeight(dp(52));return b;}
 

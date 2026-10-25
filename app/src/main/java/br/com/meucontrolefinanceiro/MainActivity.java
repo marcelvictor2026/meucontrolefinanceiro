@@ -15,10 +15,10 @@ import java.io.*;
 
 public class MainActivity extends Activity {
  SQLiteDatabase db; LinearLayout layout; String area="Pessoal",periodo="Mensal";
- int bg=Color.rgb(8,8,10), panel=Color.rgb(29,27,24), green=Color.rgb(45,210,135), red=Color.rgb(255,96,96), cyan=Color.rgb(255,163,36), gold=Color.rgb(255,213,69);
- int muted=Color.rgb(194,180,157), stroke=Color.rgb(114,75,34);
+ int bg=Color.rgb(5,6,7), panel=Color.rgb(22,22,20), green=Color.rgb(44,211,127), red=Color.rgb(255,93,83), cyan=Color.rgb(214,173,91), gold=Color.rgb(231,190,101);
+ int muted=Color.rgb(181,174,158), stroke=Color.rgb(85,68,40);
  int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+.5f);}
- GradientDrawable surface(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColors(new int[]{color,Color.rgb(12,11,12)});d.setOrientation(GradientDrawable.Orientation.TL_BR);d.setCornerRadius(dp(radius));d.setStroke(dp(1),stroke);return d;}
+ GradientDrawable surface(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColors(new int[]{color,Color.rgb(10,10,10)});d.setOrientation(GradientDrawable.Orientation.TL_BR);d.setCornerRadius(dp(radius));d.setStroke(dp(1),stroke);return d;}
  void spacing(int h){View v=new View(this);layout.addView(v,new LinearLayout.LayoutParams(1,dp(h)));}
  TextView metric(String label,String amount,int accent){
   TextView t=text(label+"\n"+amount,19,accent);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);t.setLineSpacing(dp(5),1);
@@ -26,18 +26,18 @@ public class MainActivity extends Activity {
  }
  TextView areaButton(String name,String subtitle,String symbol,int accent){
   boolean active=area.equals(name);
-  TextView t=text(symbol+"  "+name+"\\n"+subtitle,16,active?bg:Color.WHITE);
+  TextView t=text(symbol+"  "+name+"\n"+subtitle,15,active?bg:Color.WHITE);
   t.setTypeface(Typeface.DEFAULT,active?Typeface.BOLD:Typeface.NORMAL);
   t.setGravity(Gravity.CENTER_VERTICAL);t.setLineSpacing(dp(7),1f);
   t.setPadding(dp(16),dp(20),dp(10),dp(20));
-  GradientDrawable d=new GradientDrawable(GradientDrawable.Orientation.TL_BR,active?new int[]{gold,Color.rgb(255,143,27),Color.rgb(222,78,13)}:new int[]{panel,Color.rgb(9,21,40)});
+  GradientDrawable d=new GradientDrawable(GradientDrawable.Orientation.TL_BR,active?new int[]{Color.rgb(249,220,150),gold,Color.rgb(154,112,45)}:new int[]{panel,Color.rgb(11,11,11)});
   d.setCornerRadius(dp(22));d.setStroke(dp(active?2:1),active?gold:stroke);
   t.setBackground(d);t.setElevation(dp(active?8:2));
   t.setOnClickListener(v->{if(!area.equals(name)){area=name;render();}});
   return t;
  }
  void section(String name){spacing(22);TextView t=text("✦  "+name,18,Color.WHITE);t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);layout.addView(t);spacing(5);}
- Button action(String label,Runnable callback,boolean primary){Button b=button(label,callback);b.setTextColor(primary?Color.BLACK:Color.WHITE);b.setTextSize(14);b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);b.setBackground(primary?new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,new int[]{gold,Color.rgb(255,154,29),Color.rgb(233,91,15)}):surface(panel,18));b.setElevation(dp(5));b.setMinHeight(dp(52));return b;}
+ Button action(String label,Runnable callback,boolean primary){Button b=button(label,callback);b.setTextColor(primary?Color.BLACK:Color.WHITE);b.setTextSize(14);b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);b.setBackground(primary?new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,new int[]{Color.rgb(248,220,151),gold,Color.rgb(163,117,46)}):surface(panel,18));b.setElevation(dp(5));b.setMinHeight(dp(52));return b;}
 
  TextView text(String value,int size,int color){TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setTextColor(color);t.setPadding(12,12,12,12);return t;}
  Button button(String value,Runnable action){Button b=new Button(this);b.setText(value);b.setAllCaps(false);b.setTextColor(Color.WHITE);b.setTextSize(13);b.setBackground(surface(panel,16));b.setMinHeight(dp(44));b.setOnClickListener(v->action.run());return b;}
@@ -56,18 +56,18 @@ public class MainActivity extends Activity {
  void render(){
  ScrollView sc=new ScrollView(this);layout=new LinearLayout(this);layout.setOrientation(1);layout.setPadding(dp(18),dp(24),dp(18),dp(36));layout.setBackgroundColor(bg);sc.addView(layout);setContentView(sc);
  LinearLayout brandRow=new LinearLayout(this);brandRow.setGravity(Gravity.CENTER_VERTICAL);
- ImageView logo=new ImageView(this);logo.setImageResource(R.drawable.app_brand_icon);brandRow.addView(logo,new LinearLayout.LayoutParams(dp(54),dp(54)));
- TextView brand=text("VS  •  MEU CONTROLE FINANCEIRO",14,gold);brand.setTypeface(Typeface.DEFAULT,Typeface.BOLD);brandRow.addView(brand);brandRow.setPadding(dp(8),dp(7),dp(8),dp(7));brandRow.setBackground(surface(panel,20));layout.addView(brandRow);spacing(15);
- TextView heading=text("Seu futuro financeiro.",24,Color.WHITE);heading.setTypeface(Typeface.DEFAULT,Typeface.BOLD);layout.addView(heading);
- layout.addView(text("PAINEL INTELIGENTE  /  "+area.toUpperCase(new Locale("pt","BR")),12,cyan));spacing(12);
- TextView switchTitle=text("ESCOLHA SEU PAINEL",12,gold);switchTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);layout.addView(switchTitle);spacing(5);
+ ImageView logo=new ImageView(this);logo.setImageResource(R.drawable.app_brand_icon);brandRow.addView(logo,new LinearLayout.LayoutParams(dp(44),dp(44)));
+ TextView brand=text("MEU CONTROLE\\nFINANCEIRO",16,Color.WHITE);brand.setTypeface(Typeface.DEFAULT,Typeface.BOLD);brandRow.addView(brand);
+ brandRow.setPadding(dp(12),dp(9),dp(12),dp(9));layout.addView(brandRow);spacing(12);
+ TextView heading=text("VISÃO GERAL  /  "+area.toUpperCase(new Locale("pt","BR")),12,gold);heading.setTypeface(Typeface.DEFAULT,Typeface.BOLD);layout.addView(heading);spacing(9);
+ TextView switchTitle=text("PAINÉIS",12,muted);switchTitle.setTypeface(Typeface.DEFAULT,Typeface.BOLD);layout.addView(switchTitle);spacing(5);
  LinearLayout scopes=new LinearLayout(this);scopes.setOrientation(LinearLayout.HORIZONTAL);
  LinearLayout.LayoutParams personalParams=new LinearLayout.LayoutParams(0,dp(102),1);personalParams.setMargins(0,0,dp(6),0);
  LinearLayout.LayoutParams businessParams=new LinearLayout.LayoutParams(0,dp(102),1);businessParams.setMargins(dp(6),0,0,0);
  scopes.addView(areaButton("Pessoal","Minhas finanças","◉",cyan),personalParams);
  scopes.addView(areaButton("Empresa","Gestão do negócio","▣",cyan),businessParams);
  layout.addView(scopes);spacing(10);
- TextView selected=text(area.equals("Pessoal")?"●  ÁREA PESSOAL ATIVA":"●  ÁREA EMPRESARIAL ATIVA",12,cyan);
+ TextView selected=text(area.equals("Pessoal")?"●  FINANÇAS PESSOAIS":"●  FINANÇAS DA EMPRESA",12,gold);
  selected.setTypeface(Typeface.DEFAULT,Typeface.BOLD);layout.addView(selected);spacing(9);
  LinearLayout tabs=new LinearLayout(this);for(String p:new String[]{"Semanal","Mensal","Anual"})tabs.addView(button((periodo.equals(p)?"● ":"")+p,()->{periodo=p;render();}),new LinearLayout.LayoutParams(0,-2,1));layout.addView(tabs);spacing(14);
  long since=System.currentTimeMillis();Calendar cal=Calendar.getInstance();
@@ -82,30 +82,30 @@ public class MainActivity extends Activity {
  if(tipo.equals("Receita"))in+=v;else out+=v;ids.add(id);
  String origem=c.getString(5),detalhes=c.getString(6);long criado=c.getLong(7);
  String dateText=new SimpleDateFormat("dd/MM/yyyy 'às' HH:mm",new Locale("pt","BR")).format(new Date(data));
- String row=(tipo.equals("Receita")?"↑ RECEITA  ":"↓ DESPESA  ")+reais(v)+"\\n"+descricao;
- if(origem!=null&&!origem.isEmpty())row+="\\nOrigem: "+origem;
- if(detalhes!=null&&!detalhes.isEmpty())row+="\\nDetalhes: "+detalhes;
- row+="\\nEntrada: "+dateText;
- if(criado>0&&criado!=data)row+="\\nRegistrado: "+new SimpleDateFormat("dd/MM/yyyy 'às' HH:mm",new Locale("pt","BR")).format(new Date(criado));
+ String row=(tipo.equals("Receita")?"↑ RECEITA  ":"↓ DESPESA  ")+reais(v)+"\n"+descricao;
+ if(origem!=null&&!origem.isEmpty())row+="\nOrigem: "+origem;
+ if(detalhes!=null&&!detalhes.isEmpty())row+="\nDetalhes: "+detalhes;
+ row+="\nEntrada: "+dateText;
+ if(criado>0&&criado!=data)row+="\nRegistrado: "+new SimpleDateFormat("dd/MM/yyyy 'às' HH:mm",new Locale("pt","BR")).format(new Date(criado));
  rows.add(row);
  }}
- layout.addView(metric("◈  SALDO DO PERÍODO",reais(in-out),in-out>=0?gold:red));
+ TextView balance=metric("SALDO ATUAL  •  "+periodo.toUpperCase(new Locale("pt","BR")),reais(in-out),in-out>=0?Color.WHITE:red);balance.setTextSize(25);balance.setPadding(dp(22),dp(25),dp(22),dp(25));GradientDrawable balanceBg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{Color.rgb(35,32,24),Color.rgb(12,12,11),Color.rgb(65,48,23)});balanceBg.setCornerRadius(dp(22));balanceBg.setStroke(dp(1),gold);balance.setBackground(balanceBg);layout.addView(balance);
  spacing(9);LinearLayout metrics=new LinearLayout(this);metrics.setOrientation(LinearLayout.HORIZONTAL);
  TextView income=metric("↑ RECEITAS",reais(in),green);TextView expense=metric("↓ DESPESAS",reais(out),red);
  LinearLayout.LayoutParams left=new LinearLayout.LayoutParams(0,-2,1);left.setMargins(0,0,dp(5),0);
  LinearLayout.LayoutParams right=new LinearLayout.LayoutParams(0,-2,1);right.setMargins(dp(5),0,0,0);
  metrics.addView(income,left);metrics.addView(expense,right);layout.addView(metrics);
- section("Análise do período");
+ section("RESUMO DO PERÍODO");
  long total=in+out; if(total>0){LinearLayout bars=new LinearLayout(this);bars.setOrientation(1);bars.setPadding(dp(14),dp(12),dp(14),dp(12));bars.setBackground(surface(panel,22));addBar(bars,"Receitas",in,total,green);addBar(bars,"Despesas",out,total,red);layout.addView(bars);}else layout.addView(text("Cadastre receitas ou despesas para visualizar o gráfico.",13,Color.LTGRAY));
  spacing(15);layout.addView(action("＋  Novo lançamento",this::newEntry,true));
  
- section("Agenda inteligente");
+ section("AGENDA");
  layout.addView(action("＋  Agendar lembrete",()->newReminder(-1),false));
  showAgenda();
- section("Segurança e backup");
+ section("SEGURANÇA E BACKUP");
  layout.addView(action("↓  Exportar lançamentos (CSV)",this::exportCsv,false));
  layout.addView(action("↑  Restaurar backup (CSV)",this::importCsv,false));
- section("Atividade recente");
+ section("ÚLTIMAS MOVIMENTAÇÕES");
  if(rows.isEmpty())layout.addView(text("Nenhum lançamento cadastrado.",15,Color.LTGRAY));
  for(int j=0;j<Math.min(40,rows.size());j++){final long id=ids.get(j);TextView item=text(rows.get(j)+"  •  toque para editar",15,Color.WHITE);item.setPadding(dp(15),dp(17),dp(15),dp(17));item.setBackground(surface(panel,18));LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(0,0,0,dp(7));layout.addView(item,lp);item.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Lançamento").setItems(new String[]{"Editar","Excluir"},(d,which)->{if(which==0)editEntry(id);else new AlertDialog.Builder(this).setTitle("Excluir lançamento?").setMessage("Esta ação não pode ser desfeita.").setNegativeButton("Cancelar",null).setPositiveButton("Excluir",(a,w)->{db.delete("lancamentos","id=? AND area=?",new String[]{String.valueOf(id),area});render();}).show();}).show());}
  layout.addView(text("Dados locais. Exporte um CSV para backup e guarde-o em local seguro. Ao restaurar, os registros são acrescentados.",12,Color.LTGRAY));

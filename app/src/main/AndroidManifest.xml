@@ -12,9 +12,6 @@
    <data android:mimeType="text/plain"/>
   </intent-filter>
  </activity>
- <service android:name=".WhatsAppNotificationService" android:label="Monitoramento financeiro WhatsApp" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" android:exported="true">
-  <intent-filter><action android:name="android.service.notification.NotificationListenerService"/></intent-filter>
- </service>
  <receiver android:name=".ReminderReceiver" android:exported="false">
  <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/></intent-filter>
  </receiver>
